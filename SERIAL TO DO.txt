@@ -1,0 +1,11 @@
+Hardware:
+Crimp wires
+Dismantle burger commander and test joysticks and buttons
+Rotary encoder
+
+
+Software:
+Set up main for commander
+Terminal user interface 
+Commander user interface
+Organise Tx Rx use with Angus - software serial
