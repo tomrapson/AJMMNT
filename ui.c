@@ -186,9 +186,6 @@ void configIOCommander(void){
 	
 	// PORTD
 	TRISCD = 0; // LCD as output
-	
-	
-	
 }
 
 // TODO: PUT THIS IN ITS OWN FILE
@@ -222,7 +219,7 @@ void askToSetToNewVal(char* str,char* valStr,char* rEnconderStr){
 	disp_line(&msg,LOWER_LINE,REPLACE);
 }
 
-while(manualOrAuto == MANUAL &&){
+while(manualOrAuto == MANUAL){
 	// TODO: GET SIGNAL STRENGTH
 		
 		if(toggleMotors){ // if motors need to be toggled
