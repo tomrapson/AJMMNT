@@ -1,14 +1,11 @@
 #include "string.h"
-#include "p18f4520.h"
-#include "SerialStuff.h"
+#include <p18f4520.h>
+// #include "SerialStuff.h"
 #include "lcd.h"
 
-#define UPPER_LINE 0b10000000
-#define LOWER_LINE 0b11000000
-#define KEEP    0
-#define REPLACE 1
 #define FACTORY_BUT	PORTBbits.RB4
 #define SELECT_BUT	PORTBbits.RB0
+#define BUTTON      PORTBbits.RB1
 #define RIGHT_BUT	PORTBbits.RB2
 #define LEFT_BUT	PORTBbits.RB3
 #define NOT_IN_MENU	0
@@ -58,20 +55,20 @@ void high_interrupt( void );
 void lowPriorityIsr( void );
 void highPriorityIsr( void );
 
-unsigned char userOrFactory = USER; // flag set to 1 in user mode, 0 in factory mode
-unsigned char manualOrAuto = MANUAL; // flag set to 1 in manual mode, 0 in auto mode
-unsigned char found = 0; // flag set to 1 when parrot found, 0 if not
-unsigned char moving = 0; // flag set to 1 when mobile robot is moving, 0 if stationary
-unsigned char interface1or2 = PRIMARY; // flag set to 1 in secondary UI, 0 in primary UI
+volatile unsigned char userOrFactory = USER; // flag set to 1 in user mode, 0 in factory mode
+volatile unsigned char manualOrAuto = MANUAL; // flag set to 1 in manual mode, 0 in auto mode
+volatile unsigned char found = 0; // flag set to 1 when parrot found, 0 if not
+volatile unsigned char moving = 0; // flag set to 1 when mobile robot is moving, 0 if stationary
+volatile unsigned char interface1or2 = PRIMARY; // flag set to 1 in secondary UI, 0 in primary UI
 unsigned char motors = 0; // flag set to 1 if motors on, 0 if off
-unsigned char toggleMotors = 0; // flag set to 1 if motors need to be toggled, 0 if not
-unsigned char userMenuPosition = NOT_IN_MENU; // counter to determine position in the menu
-unsigned char factoryMenuPosition = NOT_IN_MENU;
-unsigned char findParrotFlag = 0; // flag set to 1 to trigger search for parrot, 0 if not
+volatile unsigned char toggleMotors = 0; // flag set to 1 if motors need to be toggled, 0 if not
+volatile unsigned char userMenuPosition = NOT_IN_MENU; // counter to determine position in the menu
+volatile unsigned char factoryMenuPosition = NOT_IN_MENU;
+volatile unsigned char findParrotFlag = 0; // flag set to 1 to trigger search for parrot, 0 if not
 
 unsigned char rotaryEncoder; // variable to store value set by rotary encoder
 unsigned char rotaryEncoderStr[MAX_ROTARY_ENCODER_DIGITS]; // equivalent string
-unsigned char maxSpeed; // variable to store current max speed
+volatile unsigned char maxSpeed; // variable to store current max speed
 unsigned char maxSpeedStr[MAX_ROTARY_ENCODER_DIGITS]; // equivalent string
 unsigned char sigStrength;
 unsigned char sigStrengthStr[MAX_SIGNAL_STRENGTH_DIGITS];
@@ -79,22 +76,34 @@ unsigned char sigStrengthStr[MAX_SIGNAL_STRENGTH_DIGITS];
 unsigned char FBJoystick;
 unsigned char LRJoystick;
 
-unsigned char Kp = 0;
+volatile unsigned char Kp = 0;
 unsigned char KpStr[];
-unsigned char Ki = 0;
+volatile unsigned char Ki = 0;
 unsigned char KiStr[];
-unsigned char Kd = 0;
+volatile unsigned char Kd = 0;
 unsigned char KdStr[];
-unsigned char maxYawRate = 0;
+volatile unsigned char maxYawRate = 0;
 unsigned char maxYawRateStr[];
-unsigned char irSpe = 0;
+volatile unsigned char irSpe = 0;
 unsigned char irSpeStr[];
-unsigned char irFs = 0;
+volatile unsigned char irFs = 0;
 unsigned char irFsStr[];
-unsigned char rfSpe = 0;
+volatile unsigned char rfSpe = 0;
 unsigned char rfSpeStr[];
 
-unsigned char msg[MAX_LCD_CHARS];
+//unsigned char msg[MAX_LCD_CHARS];
+unsigned char manualStr[] = "USER MANUAL MODE";
+unsigned char motorsOff[] = "Turn motors off?";
+unsigned char motorsOn[] = "Turn motors on?";
+unsigned char speedStr[] = "MaxSpd=";
+unsigned char setTo[] = "Set to: ";
+unsigned char enterAutoMode[] = "Enter auto mode?";
+unsigned char ui2[] = "Enter UI2?";
+unsigned char autoMode[] = "AUTO MODE";
+unsigned char sel2manual[] = "SEL --> Manual";
+unsigned char next2kp = "NEXT --> Kp";
+unsigned char factoryMode[] = "FACTORY MODE";
+unsigned char menu[] = "Enter menu?";
 
 // TODO: configure interrupts
 // TODO: write to found and moving flags
@@ -117,6 +126,7 @@ void low_interrupt(void){
 void highPriorityIsr(void){ 
 	// TODO: DISABLE INTERRUPTS OF SAME PRIORITY
 	// RECEIVEserialPARSE();
+    return;
 }
 
 // TODO: configure I/O pins
@@ -128,8 +138,10 @@ void configIOCommander(void){
 	
 	// PORTB
 	TRISBbits.TRISB0 = 1; // select button as input
-	TRISBbits.TRISB1 = 1; // next button as input
-	TRISBbits.TRISB2 = 1; // factory mode button as input
+	TRISBbits.TRISB1 = 1; // all buttons as input
+	TRISBbits.TRISB2 = 1; // right button as input
+    TRISBbits.TRISB3 = 1; // left button as input
+    TRISBbits.TRISB4 = 1; // factory mode button as input
 	
 	// PORTC
 	TRISCbits.TRISC0 = 0; // found LED as output
@@ -143,10 +155,15 @@ void configIOCommander(void){
 
 // TODO: configure interrupts
 void configInterrupts(void){
-	INTCON3bits.INT1IP = 0; // INT1 external interrupt low priority
+	INTCONbits.GIE = 0; // disable interrupt response
+    INTCONbits.PEIE = 0;
+    RCONbits.IPEN = 1; // enable priority mode
+    INTCON3bits.INT1IP = 0; // INT1 external interrupt low priority
 	INTCON2bits.INTEDG1 = 1; // interrupt on rising edge on RB1/INT1
-	INTCON3bits.INT1IF = 0; // clear INT1 external interrupt
+	INTCON3bits.INT1IF = 0; // clear INT1 external interrupt flag
 	INTCON3bits.INT1IE = 1; // enable INT1 external interrupt
+    INTCONbits.GIE = 1; // enable interrupt response
+    INTCONbits.PEIE = 1;
 }
 
 void configAD(void){
@@ -201,8 +218,9 @@ void getRotaryEncoderStr(void){
 	num2str(rotaryEncoderStr,rotaryEncoder); // convert value to a string
 }
 
-void dispSigStrength(char* msg){
-	strcpypgm2ram(msg,(const char*) "S=");
+void dispSigStrength(void){
+	// strcpypgm2ram(msg,(const char*) "S=");
+    unsigned char msg[] = "S=";
     disp_line(msg,UPPER_LINE,REPLACE);
     num2str(sigStrengthStr,sigStrength);
     disp_line(sigStrengthStr,UPPER_LINE,KEEP);
@@ -225,9 +243,10 @@ void commanderLEDs(void){
 }
 
 void askToSetToNewVal(unsigned char* variable,unsigned char* curVal,unsigned char* newVal){
+    unsigned char msg[] = "Set to: ";
 	disp_line(variable,UPPER_LINE,REPLACE); // display variable name
     disp_line(curVal,UPPER_LINE,KEEP); // display current value on same line
-    strcpypgm2ram(msg,(const rom char*) "Set to: ");
+    //strcpypgm2ram(msg,(const rom char*) "Set to: ");
     disp_line(msg,UPPER_LINE,REPLACE); // ask user to set to new value set by rotary encoder
 	disp_line(newVal,LOWER_LINE,KEEP); // display new value on same line
 }
@@ -317,10 +336,16 @@ void lowPriorityIsr(void){
 
         INTCON3bits.INT1IF = 0; // clear external interrupt flag
     }
+    
+    return;
 }
 
 void main(void){
     unsigned char msg[];
+    configIOCommander();
+    configAD();
+    configInterrupts();
+    LCD_initialisation(); // turn LCD on
 	while(1){
 		if(manualOrAuto == MANUAL && userOrFactory == USER){
 				
@@ -343,48 +368,50 @@ void main(void){
 				// LCD displays in various menu positions
 				switch(userMenuPosition){
 					case NOT_IN_MENU : // if not in menu
-						dispSigStrength(msg); // display signal strength on upper line
-						strcpypgm2ram(msg,(const rom char*) "USER MANUAL MODE"); // display USER MANUAL MODE on lower line of LCD
-						disp_line(msg,LOWER_LINE,REPLACE);
+						dispSigStrength(); // display signal strength on upper line
+						//strcpypgm2ram(msg,(const rom char*) "USER MANUAL MODE"); // display USER MANUAL MODE on lower line of LCD
+                        disp_line(manualStr,LOWER_LINE,REPLACE);
 						break;
                         
 					case SET_MOTOR_ON_OFF : // if in set motor on/off mode
-						dispSigStrength(msg); // display signal strength on upper line
+						dispSigStrength(); // display signal strength on upper line
 						if(motors){ // if motors are on
-							strcpypgm2ram(msg,(const rom char*) "Turn motors off?"); // ask user if they want to turn them off
+							//strcpypgm2ram(msg,(const rom char*) "Turn motors off?"); // ask user if they want to turn them off
+                            disp_line(motorsOff,LOWER_LINE,REPLACE);
 						}
 						else{ // if motors are off
-							strcpypgm2ram(msg,(const rom char*) "Turn motors on?"); // ask user if they want to turn them on
+							//strcpypgm2ram(msg,(const rom char*) "Turn motors on?"); // ask user if they want to turn them on
+                            disp_line(motorsOn,LOWER_LINE,REPLACE);
 						}
-						disp_line(msg,LOWER_LINE,REPLACE);
+						//disp_line(msg,LOWER_LINE,REPLACE);
 						break;
                         
 					case SET_MAX_SPEED : // if in set max speed mode
 						num2str(maxSpeedStr,maxSpeed); // convert max speed to a string
                         
 						// display max speed and signal strength on upper line
-                        dispSigStrength(msg);
-                        strcpypgm2ram(msg,(const rom char*) " MaxSpd=");
-                        disp_line(msg,UPPER_LINE,KEEP);
+                        dispSigStrength();
+                        //strcpypgm2ram(msg,(const rom char*) " MaxSpd=");
+                        disp_line(speedStr,UPPER_LINE,KEEP);
                         disp_line(maxSpeedStr,UPPER_LINE,KEEP);
                         
                         // display max speed value being set by rotary encoder on lower line
                  		getRotaryEncoderStr(); // get new max speed as a string from rotary encoder
-                        strcpypgm2ram((unsigned char) msg,(const rom char*) "Set to: ");
-                        disp_line(msg,LOWER_LINE,REPLACE);
+                        //strcpypgm2ram((unsigned char) msg,(const rom char*) "Set to: ");
+                        disp_line(setTo,LOWER_LINE,REPLACE);
                         disp_line(rotaryEncoderStr,LOWER_LINE,KEEP);
 						break;
                         
 					case SET_AUTO_MODE : // if in set auto mode
-						dispSigStrength(msg); // display signal strength on upper line
-						strcpypgm2ram(msg,(const rom char*) "Enter auto mode?"); // ask the user if they want to enter auto mode
-						disp_line(msg,LOWER_LINE,REPLACE);
+						dispSigStrength(); // display signal strength on upper line
+						//strcpypgm2ram(msg,(const rom char*) "Enter auto mode?"); // ask the user if they want to enter auto mode
+						disp_line(enterAutoMode,LOWER_LINE,REPLACE);
 						break;
                         
 					case USER_MENU_END : // if in switch to secondary UI mode
-						dispSigStrength(msg); // display signal strength on upper line
-						strcpypgm2ram(msg,(const rom char*) "Enter UI2?"); // ask the user if they want to enter secondary user interface
-						disp_line(msg,LOWER_LINE,REPLACE);
+						dispSigStrength(); // display signal strength on upper line
+						//strcpypgm2ram(msg,(const rom char*) "Enter UI2?"); // ask the user if they want to enter secondary user interface
+						disp_line(ui2,LOWER_LINE,REPLACE);
                         
 					default :
 						break;
@@ -405,9 +432,9 @@ void main(void){
 		else if(manualOrAuto == AUTO && userOrFactory == USER){
 			if(interface1or2 == PRIMARY){
 				// LCD display
-				dispSigStrength(msg); // display signal strength on upper line
-				strcpypgm2ram(msg,(const rom char*) "AUTO MODE"); // display AUTO MODE on lower line of LCD
-				disp_line(msg,LOWER_LINE,REPLACE);
+				dispSigStrength(); // display signal strength on upper line
+				//strcpypgm2ram(msg,(const rom char*) "AUTO MODE"); // display AUTO MODE on lower line of LCD
+				disp_line(autoMode,LOWER_LINE,REPLACE);
 				
 				// LEDs (implemented without logic gates here...)
 				commanderLEDs();
@@ -427,10 +454,10 @@ void main(void){
 			// LCD displays
 			switch(factoryMenuPosition){
 				case NOT_IN_MENU : // if FACTORY MODE but not in menu
-					strcpypgm2ram(msg,(const rom char*) "FACTORY MODE"); // display FACTORY MODE on upper line of LCD
-					disp_line(msg,UPPER_LINE,REPLACE);
-					strcpypgm2ram(msg,(const rom char*) "Enter menu?"); // ask the user if they want to enter the menu
-					disp_line(msg,LOWER_LINE,REPLACE);
+					//strcpypgm2ram(msg,(const rom char*) "FACTORY MODE"); // display FACTORY MODE on upper line of LCD
+					disp_line(factoryMode,UPPER_LINE,REPLACE);
+					//strcpypgm2ram(msg,(const rom char*) "Enter menu?"); // ask the user if they want to enter the menu
+					disp_line(menu,LOWER_LINE,REPLACE);
 					break;
                     
 				// TODO: GET GAINS
@@ -470,10 +497,10 @@ void main(void){
 					break;
                     
 				case FACTORY_MENU_END :
-					strcpypgm2ram(msg,(const rom char*) "SEL --> Manual"); // display FACTORY MODE on upper line of LCD
-					disp_line(msg,UPPER_LINE,REPLACE);
-					strcpypgm2ram(msg,(const rom char*) "NEXT --> Kp"); // ask the user if they want to enter the menu
-					disp_line(msg,LOWER_LINE,REPLACE);
+					//strcpypgm2ram(msg,(const rom char*) "SEL --> Manual");
+					disp_line(sel2manual,UPPER_LINE,REPLACE);
+					//strcpypgm2ram(msg,(const rom char*) "NEXT --> Kp"); // ask the user if they want to enter the menu
+					disp_line(next2kp,LOWER_LINE,REPLACE);
 					break;
                     
 				default :

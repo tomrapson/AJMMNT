@@ -7,6 +7,9 @@
 
 #ifndef LCD_H
 #define	LCD_H
-	void LCD_initialisation(void);
-	void disp_line(unsigned char* printarray, unsigned char linepos, unsigned char replace);
+#define UPPER_LINE  0
+#define LOWER_LINE  1
+	void LCD_init(void);
+	void putcLCD(unsigned char);
+    void putsLCD(unsigned char*,unsigned char);
 #endif	/* LCD_H */
