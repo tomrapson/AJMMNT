@@ -3,10 +3,10 @@
 #define UPPER_LINE 0b10000000
 #define LOWER_LINE 0b11000000
 #define REPLACE 1
-#define FACTORY_FLAG	INTCON3bits.INT0IF
-#define SELECT_FLAG	INTCON3bits.INT1IF
-#define RIGHT_FLAG	INTCON3bits.INT2IF
-#define LEFT_FLAG	INTCONbits.RBIF
+#define FACTORY_BUT	PORTBbits.RB4
+#define SELECT_BUT	PORTBbits.RB0
+#define RIGHT_BUT	PORTBbits.RB2
+#define LEFT_BUT	PORTBbits.RB3
 #define NOT_IN_MENU	0
 #define SET_MOTOR_ON_OFF 1
 #define SET_MAX_SPEED	2
@@ -32,8 +32,24 @@
 #define MAX_SIGNAL_STRENGTH_DIGITS 4
 #define MAX_MAX_SPEED_DIGITS	3
 #define MAX_LCD_CHARS
+#define SPEED_RIGHT_DATA_ID	'b'
+#define SPEED_LEFT_DATA_ID	'c'
+#define KP_DATA_ID	'p'
+#define KD_DATA_ID	'd'
+#define RF_SPE_DATA_ID	'f'
+#define IR_SPE_DATA_ID	'g'
+#define MOTOR_STATE_DATA_ID	'o'
+#define IR_FS_DATA_ID	'r'
+#define SPEED_MAX_DATA_ID	's'
+#define YAW_RATE_MAX_DATA_ID	'y'
+#define MOVING_DATA_ID	'm'
+#define FOUND_DATA_ID	'z'
+#define SIGNAL_STRENGTH_DATA_ID	'x'
+#define START_DATA_ID	'w'
+// TODO: signal strength, start finding parrot, parot found defines
 
 void findParrot(void);
+SENDserialPACKAGE(unsigned char, unsigned char);
 
 unsigned char userOrFactory = USER; // flag set to 1 in user mode, 0 in factory mode
 unsigned char manualOrAuto = MANUAL; // flag set to 1 in manual mode, 0 in auto mode
@@ -54,7 +70,8 @@ unsigned char msg[MAX_LCD_CHARS];
 
 // TODO: configure interrupts
 // TODO: write to found and moving flags
-// TODO: LEFT BUTTON
+// TODO: move functions into correct places, check variables and constants accounted for and in correct place
+// TODO: figure out rotary encoder
 
 #pragma code highPriorityInterruptAddress=0x0008
 void high_interrupt(void){
@@ -71,11 +88,19 @@ void low_interrupt(void){
 #pragma interrupt highPriorityIsr
 void highPriorityIsr(void){ 
 	// TODO: DISABLE INTERRUPTS OF SAME PRIORITY
+	RECEIVEserialPARSE();
+}
 
-	// External button interrupt
-	if(SELECT_FLAG){ // if select button pressed
-		SELECT_FLAG = 0; // reset flag
-		if(manualOrAuto == MANUAL && userOrFactory == USER){ // and in manual mode and not in factory mode
+#pragma interrupt lowPriorityIsr
+void lowPriorityIsr(void){
+	// TODO: DISABLE INTERRUPTS OF SAME PRIORITY
+	
+	// External button interrupt. Priority: FACTORY >SELECT > RIGHT > LEFT
+	if(FACTORY_BUT && userOrFactory == USER){ // if factory button pressed and in user mode
+		userOrFactory = FACTORY; // switch to factory mode
+	}
+	else if(SELECT_BUT && userOrFactory == USER){ // if select button pressed and in user mode
+		if(manualOrAuto == MANUAL){ // if in manual mode
 			switch(userMenuPosition){
 				case NOT_IN_MENU : // if not in menu when select button pressed
 					userMenuPosition = SET_MOTOR_ON_OFF; // enter menu	
@@ -96,72 +121,58 @@ void highPriorityIsr(void){
 			}
 			
 		}
-		else if(manualOrAuto == AUTO && userOrFactory == USER){ // and in auto mode and not in factory mode
+		else if(manualOrAuto == AUTO){ // if in auto mode
 			findParrotFlag = 1;
 		}
-		else if(userOrFactory == FACTORY){
-			switch(factoryMenuPosition){
-				case NOT_IN_MENU : // and in factory mode but not in menu
-					factoryMenuPosition = SET_P_GAIN; // enter menu, starting at setting Kp
-					break;
-				case SET_P_GAIN :
-					Kp = readRotaryEncoder(); // set Kp to value established by rotary encoder
-					break;
-				case SET_I_GAIN :
-					Ki = readRotaryEncoder(); // set Ki to value established by rotary encoder
-					break;
-				case SET_D_GAIN :
-					Kd = readRotaryEncoder(); // set Kd to value established by rotary encoder
-					break;
-				case SET_YAW_RATE_MAX :
-					maxYawRate = readRotaryEncoder(); // set max yaw rate to value established by rotary encoder
-					break;
-				case SET_IR_SAMPLES_PER_ESTIMATE :
-					irSPE = readRotaryEncoder(); // set IR samples per estimate to value established by rotary encoder
-					break;
-				case SET_IR_SAMPLE_RATE :
-					irFs = readRotaryEncoder(); // set IR sample rate to value established by rotary encoder
-					break;
-				case SET_RF_SAMPLES_PER_ESTIMATE :
-					rfSpe = readRotaryEncoder(); // set RF samples per estimate to value established by rotary encoder
-					break;
-				case FACTORY_MENU_END :
-					userOrFactory = USER; // go back to manual mode
-					break;
-				default :
-					break;
-			}
-		}
-		SELECT_FLAG = 0; // clear flag
 	}
-	else if(RIGHT_FLAG){ // if right button pressed
-		if(manualOrAuto == MANUAL && userOrFactory == USER){ // in manual mode
-			if(userMenuPosition < USER_MENU_END){ // if end of menu not reached
-				userMenuPosition = ; // go to next menu item
-			}
+	else if(SELECT_BUT && userOrFactory == FACTORY){ // if select button pressed and in factory mode
+		switch(factoryMenuPosition){
+			case NOT_IN_MENU : // but not in menu when select button is pressed
+				factoryMenuPosition = SET_P_GAIN; // enter menu, starting at setting Kp
+				break;
+			case SET_P_GAIN :
+				Kp = readRotaryEncoder(); // set Kp to value established by rotary encoder
+				break;
+			case SET_I_GAIN :
+				Ki = readRotaryEncoder(); // set Ki to value established by rotary encoder
+				break;
+			case SET_D_GAIN :
+				Kd = readRotaryEncoder(); // set Kd to value established by rotary encoder
+				break;
+			case SET_YAW_RATE_MAX :
+				maxYawRate = readRotaryEncoder(); // set max yaw rate to value established by rotary encoder
+				break;
+			case SET_IR_SAMPLES_PER_ESTIMATE :
+				irSPE = readRotaryEncoder(); // set IR samples per estimate to value established by rotary encoder
+				break;
+			case SET_IR_SAMPLE_RATE :
+				irFs = readRotaryEncoder(); // set IR sample rate to value established by rotary encoder
+				break;
+			case SET_RF_SAMPLES_PER_ESTIMATE :
+				rfSpe = readRotaryEncoder(); // set RF samples per estimate to value established by rotary encoder
+				break;
+			case FACTORY_MENU_END :
+				userOrFactory = USER; // go back to manual mode
+				break;
+			default :
+				break;
 		}
-		else if(manualOrAuto == AUTO && userOrFactory == USER){ // in auto mode
-			manualOrAuto = MANUAL; // next button transitions to manual mode
-		}
-		else if(userOrFactory == FACTORY){ // in factory mode
-			if(factoryMenuPosition < FACTORY_MENU_END){ // if end of menu not reached
-				factoryMenuPosition++; // go to next menu item
-			}
-			else{
-				userMenuPosition = SET_P_GAIN; // if end of menu reached, go to start of menu (set P gain)
-			}
-		}
-		NEXT_FLAG = 0; // clear flag
 	}
-	else if(FACTORY_FLAG){ // if factory switch pressed
-		userOrFactory = FACTORY; // switch to factory mode
-		FACTORY_FLAG = 0; // clear flag
+	else if(RIGHT_BUT && userOrFactory == USER && manualOrAuto == MANUAL && userMenuPosition < USER_MENU_END){ // if right button pressed and in user, manual mode and not at end of menu
+		userMenuPosition++; // go to next menu item
 	}
-}
-
-#pragma interrupt lowPriorityIsr
-void lowPriorityIsr(void){
-	// TODO: DISABLE INTERRUPTS OF SAME PRIORITY
+	else if(RIGHT_BUT && userOrFactory == FACTORY && factoryMenuPosition < FACTORY_MENU_END){ // if right button pressed and in factory mode and not at end of menu
+		factoryMenuPosition++; // go to next menu item
+	}
+	else if(LEFT_BUT && userOrFactory == USER && manualOrAuto == MANUAL && userMenuPosition > NOT_IN_MENU){ // if left button pressed and in user, manual mode and in menu
+		userMenuPosition--; // go to previous menu item
+	}
+	else if(LEFT_BUT && userOrFactory == USER && manualOrAuto == AUTO){ // if right button pressed and in user, auto mode
+		manualOrAuto = MANUAL; // left button transitions to manual mode
+	}
+	else if(LEFT_BUT && userOrFactory == FACTORY && factoryMenuPosition > NOT_IN_MENU){ // if left button pressed and in factory mode and in menu
+		factoryMenuPosition++; // go to next menu item
+	}
 }
 
 // TODO: configure I/O pins
@@ -188,7 +199,10 @@ void configIOCommander(void){
 
 // TODO: configure interrupts
 void configInterrupts(void){
-	
+	INTCON3bits.INT1IP = 0; // INT1 external interrupt low priority
+	INTCON2bits.INTEDG1 = 1; // interrupt on rising edge on RB1/INT1
+	INTCON3bits.INT1IF = 0; // clear INT1 external interrupt
+	INTCON3bits.INT1IE = 1; // enable INT1 external interrupt
 }
 
 void configAD(void){
@@ -274,147 +288,150 @@ void askToSetToNewVal(unsigned char* variable,unsigned char* curVal,unsigned cha
 	disp_line(&msg,LOWER_LINE,REPLACE);
 }
 
-while(manualOrAuto == MANUAL){
-	// TODO: GET SIGNAL STRENGTH
-	
-	FBJoystick = readFBJoystick(); // update fwd-back joystick value
-	LRJoystick = readLRJoystick(); // update left-right joystick value
-		
-		if(toggleMotors){ // if motors need to be toggled
-			if(motors){ // and they are on
-				// TODO: motion control set points set to 0
-                // TODO: motor drive amplifiers on Mobile Robot de-energised
-			}
-			else{ // and they are off
-				// TODO: turn them on
-			}
-			motors = !motors; // toggle motors flag
-			changeMotors = 0; // clear flag
-		}
-		
-    if(interface1or2 == PRIMARY){
-        // LCD displays in various menu positions
-		switch(userMenuPosition){
-			case NOT_IN_MENU : // if not in menu
-				dispSigStrength(sigStrength); // display signal strength on upper line
-				msg = "USER MANUAL MODE"; // display USER MANUAL MODE on lower line of LCD
-				disp_line(&msg,LOWER_LINE,REPLACE);
-				break;
-			case SET_MOTOR_ON_OFF : // if in set motor on/off mode
-				dispSigStrength(sigStrength); // display signal strength on upper line
-				if(motors){ // if motors are on
-					msg = "Turn motors off?"; // ask user if they want to turn them off
+int main(void){
+	while(1){
+		if(manualOrAuto == MANUAL && userOrFactory == USER){
+				
+			if(toggleMotors){ // if motors need to be toggled
+				if(motors){ // and they are on
+					SENDserialPACKAGE(MOTOR_STATE_DATA_ID,0); // turn them off
 				}
-				else{ // if motors are off
-					msg = "Turn motors on?"; // ask user if they want to turn them on
+				else{ // and they are off
+					SENDserialPACKAGE(MOTOR_STATE_DATA_ID,1); // turn them on
 				}
-				disp_line(&msg,LOWER_LINE,REPLACE);
-				break;
-			case SET_MAX_SPEED : // if in set max speed mode
-				num2str(maxSpeedStr,maxSpeed); // convert max speed to a string
-				// display max speed and signal strength on upper line
-				msg = strcat("MaxSpd=",maxSpeedStr);
-				msg = strcat(msg," S=");
-				msg = strcat(msg,sigStrengthStr);
-				disp_line(&msg,UPPER_LINE,REPLACE);
-				getRotaryEncoderStr(); // get new max speed as a string from rotary encoder
-				msg = strcat("Set to: ",rotaryEncoderStr); // display max speed value being set by rotary encoder on lower line
-				disp_line(&msg,LOWER_LINE,REPLACE);
-				break;
-			case SET_AUTO_MODE : // if in set auto mode
-				dispSigStrength(sigStrength); // display signal strength on upper line
-				msg = "Enter auto mode?"; // ask the user if they want to enter auto mode
-				disp_line(&msg,LOWER_LINE,REPLACE);
-				break;
-			case USER_MENU_END : // if in switch to secondary UI mode
-				dispSigStrength(sigStrength); // display signal strength on upper line
-				msg = "Enter UI2?"; // ask the user if they want to enter secondary user interface
-				disp_line(&msg,LOWER_LINE,REPLACE);
-			default :
-				break;
-		}
-		
-		// LEDs (implemented without logic gates here...)
-		commanderLEDs();
-                 
-        
-    }
-	
-	// TODO: write manual mode secondary UI
-	else{
-		
-	}
-}
-
-while(manualOrAuto == AUTO){
-	if(interface1or2 == PRIMARY){
-		// LCD display
-		dispSigStrength(sigStrength); // display signal strength on upper line
-		msg = "AUTO MODE"; // display AUTO MODE on lower line of LCD
-		disp_line(msg,LOWER_LINE,REPLACE);
-		
-		// LEDs (implemented without logic gates here...)
-		commanderLEDs();
-	}
-	
-	// TODO: write auto mode secondary UI
-	else{
-		
-	}
-	if(findParrotFlag){ // if findParrotFlag is set, commence search
-		findParrot();
-	}
-}
-
-while(userOrFactory == FACTORY){
-	getRotaryEncoderStr(); // get new rotary encoder value as a string
-	// LCD displays
-    switch(factoryMenuPosition){
-		case NOT_IN_MENU : // if FACTORY MODE but not in menu
-			msg = "FACTORY MODE"; // display FACTORY MODE on upper line of LCD
-			disp_line(&msg,UPPER_LINE,REPLACE);
-			msg = "Enter menu?"; // ask the user if they want to enter the menu
-			disp_line(&msg,LOWER_LINE,REPLACE);
-			break;
-		// TODO: GET GAINS
-		case SET_P_GAIN :
-			num2str(KpStr,Kp); // convert Kp to a string
+				motors = !motors; // toggle motors flag
+				toggleMotors = 0; // clear flag
+			}
+				
+			if(interface1or2 == PRIMARY){
+				
+				FBJoystick = readFBJoystick(); // update fwd-back joystick value
+				LRJoystick = readLRJoystick(); // update left-right joystick value
+				
+				// LCD displays in various menu positions
+				switch(userMenuPosition){
+					case NOT_IN_MENU : // if not in menu
+						dispSigStrength(sigStrength); // display signal strength on upper line
+						msg = "USER MANUAL MODE"; // display USER MANUAL MODE on lower line of LCD
+						disp_line(&msg,LOWER_LINE,REPLACE);
+						break;
+					case SET_MOTOR_ON_OFF : // if in set motor on/off mode
+						dispSigStrength(sigStrength); // display signal strength on upper line
+						if(motors){ // if motors are on
+							msg = "Turn motors off?"; // ask user if they want to turn them off
+						}
+						else{ // if motors are off
+							msg = "Turn motors on?"; // ask user if they want to turn them on
+						}
+						disp_line(&msg,LOWER_LINE,REPLACE);
+						break;
+					case SET_MAX_SPEED : // if in set max speed mode
+						num2str(maxSpeedStr,maxSpeed); // convert max speed to a string
+						// display max speed and signal strength on upper line
+						msg = strcat("MaxSpd=",maxSpeedStr);
+						msg = strcat(msg," S=");
+						msg = strcat(msg,sigStrengthStr);
+						disp_line(&msg,UPPER_LINE,REPLACE);
+						getRotaryEncoderStr(); // get new max speed as a string from rotary encoder
+						msg = strcat("Set to: ",rotaryEncoderStr); // display max speed value being set by rotary encoder on lower line
+						disp_line(&msg,LOWER_LINE,REPLACE);
+						break;
+					case SET_AUTO_MODE : // if in set auto mode
+						dispSigStrength(sigStrength); // display signal strength on upper line
+						msg = "Enter auto mode?"; // ask the user if they want to enter auto mode
+						disp_line(&msg,LOWER_LINE,REPLACE);
+						break;
+					case USER_MENU_END : // if in switch to secondary UI mode
+						dispSigStrength(sigStrength); // display signal strength on upper line
+						msg = "Enter UI2?"; // ask the user if they want to enter secondary user interface
+						disp_line(&msg,LOWER_LINE,REPLACE);
+					default :
+						break;
+				}
+				
+				// LEDs (implemented without logic gates here...)
+				commanderLEDs();
+						 
+				
+			}
 			
-			num2str(KpStr,Kp); // convert Kp to a string
-			msg = strcat("Kp = ",KpStr); // display current Kp on upper line
-			askToSetToNewVal("Kp = ",KpStr,rotaryEncoderStr); // display current Kp on upper line and display Kp set by rotary encoder on lower line
-			break;
-		case SET_I_GAIN :
-			num2str(KiStr,Ki); // convert Ki to a string
-			askToSetToNewVal("Ki = ",KiStr,rotaryEncoderStr); // display current Ki on upper line and display Ki set by rotary encoder on lower line
-			break;
-		case SET_D_GAIN :
-			num2str(KdStr,Kd); // convert Kd to a string
-			askToSetToNewVal("Kd = ",KdStr,rotaryEncoderStr); // display current Kd on upper line and display Kd set by rotary encoder on lower line
-			break;
-		case SET_YAW_RATE_MAX :
-			num2str(maxYawRateStr,maxYawRate); // convert max yaw rate to a string
-			askToSetToNewVal("Max dθ/dt = ",maxYawRateStr,rotaryEncoderStr); // display current max yaw rate on upper line and display max yaw rate set by rotary encoder on lower line
-			break;
-		case SET_IR_SAMPLES_PER_ESTIMATE :
-			num2str(irSpeStr,irSpe); // convert IR samples per estimate to a string
-			askToSetToNewVal("IR SPE = ",irSpeStr,rotaryEncoderStr); // display current IR samples per estimate on upper line and display IR samples per estimate set by rotary encoder on lower line
-			break;
-		case SET_IR_SAMPLE_RATE :
-			num2str(irFsStr,irFs); // convert IR sample rate to a string
-			askToSetToNewVal("IR fs = ",irFsStr,rotaryEncoderStr); // display current IR sample rate on upper line and display IR sample rate set by rotary encoder on lower line
-			break;
-		case SET_RF_SAMPLES_PER_ESTIMATE :
-			num2str(rfSpeStr,rfSpe); // convert Kp to a string
-			askToSetToNewVal("RF SPE = ",rfSpeStr,rotaryEncoderStr); // display current RF samples per estimate on upper line and display Kp set by rotary encoder on lower line
-			break;
-		case FACTORY_MENU_END :
-			msg = "SEL --> Manual"; // display FACTORY MODE on upper line of LCD
-			disp_line(&msg,UPPER_LINE,REPLACE);
-			msg = "NEXT --> Kp"; // ask the user if they want to enter the menu
-			disp_line(&msg,LOWER_LINE,REPLACE);
-			break;
-		default :
-			break;
+			// TODO: write manual mode secondary UI
+			else if(interface1or2 == SECONDARY){
+				
+			}
+		}
+
+		else if(manualOrAuto == AUTO && userOrFactory == USER){
+			if(interface1or2 == PRIMARY){
+				// LCD display
+				dispSigStrength(sigStrength); // display signal strength on upper line
+				msg = "AUTO MODE"; // display AUTO MODE on lower line of LCD
+				disp_line(msg,LOWER_LINE,REPLACE);
+				
+				// LEDs (implemented without logic gates here...)
+				commanderLEDs();
+			}
+			
+			// TODO: write auto mode secondary UI
+			else if(interface1or2 == SECONDARY){
+				
+			}
+			if(findParrotFlag){ // if findParrotFlag is set, commence search
+				SENDserialPACKAGE(START_DATA_ID,1);
+			}
+		}
+
+		else if(userOrFactory == FACTORY){
+			getRotaryEncoderStr(); // get new rotary encoder value as a string
+			// LCD displays
+			switch(factoryMenuPosition){
+				case NOT_IN_MENU : // if FACTORY MODE but not in menu
+					msg = "FACTORY MODE"; // display FACTORY MODE on upper line of LCD
+					disp_line(&msg,UPPER_LINE,REPLACE);
+					msg = "Enter menu?"; // ask the user if they want to enter the menu
+					disp_line(&msg,LOWER_LINE,REPLACE);
+					break;
+				// TODO: GET GAINS
+				case SET_P_GAIN :
+					num2str(KpStr,Kp); // convert Kp to a string
+					
+					num2str(KpStr,Kp); // convert Kp to a string
+					msg = strcat("Kp = ",KpStr); // display current Kp on upper line
+					askToSetToNewVal("Kp = ",KpStr,rotaryEncoderStr); // display current Kp on upper line and display Kp set by rotary encoder on lower line
+					break;
+				case SET_I_GAIN :
+					num2str(KiStr,Ki); // convert Ki to a string
+					askToSetToNewVal("Ki = ",KiStr,rotaryEncoderStr); // display current Ki on upper line and display Ki set by rotary encoder on lower line
+					break;
+				case SET_D_GAIN :
+					num2str(KdStr,Kd); // convert Kd to a string
+					askToSetToNewVal("Kd = ",KdStr,rotaryEncoderStr); // display current Kd on upper line and display Kd set by rotary encoder on lower line
+					break;
+				case SET_YAW_RATE_MAX :
+					num2str(maxYawRateStr,maxYawRate); // convert max yaw rate to a string
+					askToSetToNewVal("Max dθ/dt = ",maxYawRateStr,rotaryEncoderStr); // display current max yaw rate on upper line and display max yaw rate set by rotary encoder on lower line
+					break;
+				case SET_IR_SAMPLES_PER_ESTIMATE :
+					num2str(irSpeStr,irSpe); // convert IR samples per estimate to a string
+					askToSetToNewVal("IR SPE = ",irSpeStr,rotaryEncoderStr); // display current IR samples per estimate on upper line and display IR samples per estimate set by rotary encoder on lower line
+					break;
+				case SET_IR_SAMPLE_RATE :
+					num2str(irFsStr,irFs); // convert IR sample rate to a string
+					askToSetToNewVal("IR fs = ",irFsStr,rotaryEncoderStr); // display current IR sample rate on upper line and display IR sample rate set by rotary encoder on lower line
+					break;
+				case SET_RF_SAMPLES_PER_ESTIMATE :
+					num2str(rfSpeStr,rfSpe); // convert Kp to a string
+					askToSetToNewVal("RF SPE = ",rfSpeStr,rotaryEncoderStr); // display current RF samples per estimate on upper line and display Kp set by rotary encoder on lower line
+					break;
+				case FACTORY_MENU_END :
+					msg = "SEL --> Manual"; // display FACTORY MODE on upper line of LCD
+					disp_line(&msg,UPPER_LINE,REPLACE);
+					msg = "NEXT --> Kp"; // ask the user if they want to enter the menu
+					disp_line(&msg,LOWER_LINE,REPLACE);
+					break;
+				default :
+					break;
+			}
+		}
 	}
 }
