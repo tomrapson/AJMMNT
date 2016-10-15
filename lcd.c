@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <delays.h>
+#include "num2str.h"
 #include "p18f4520.h"
 #include "ConfigRegs18f4520.h"
 
@@ -22,29 +23,6 @@
 #define CURSOR_L    0x10
 #define FUNCTION_SET    0b00101000
 #define DISP_ON 0b00001100
-
-void num2str(unsigned char *buf, unsigned char number){
-    unsigned char i, remainder, length = 0, n;
- 
-    n = number;
-	
-	// find number of digits
-    while (n != 0)
-    {
-        length++;
-        n /= 10;
-    }
-	
-	// store each digit as a character in the buffer
-    for (i = 0; i < length; i++)
-    {
-        remainder = number % 10;
-        number = number / 10;
-        buf[length - (i + 1)] = remainder + '0';
-    }
-	
-    buf[length] = '\0'; // append a null character
-}
 
 void cmd2LCD(unsigned char cmd){
 	// write upper nibble   
@@ -103,14 +81,14 @@ void clrLine(void){
 void putsLCD(unsigned char *ptr,unsigned char pos){
     switch(pos){
         // if the string is to be output to the upper line, return home
-        case 0 :
+        case 0x0F :
             cmd2LCD(RET_HOME);
             clrLine();
             cmd2LCD(RET_HOME);
             break;
             
         // if the string is to be output to the lower line, go to start of lower line
-        case 1 :
+        case 0xFF :
             cmd2LCD(R2C1);
             clrLine();
             cmd2LCD(R2C1);
