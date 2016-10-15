@@ -81,13 +81,13 @@ volatile unsigned char Ki = 0;
 unsigned char KiStr[MAX_ROTARY_ENCODER_DIGITS];
 volatile unsigned char Kd = 0;
 unsigned char KdStr[MAX_ROTARY_ENCODER_DIGITS];
-volatile unsigned char maxYawRate = 0;
+volatile unsigned char yrm = 0;
 unsigned char yrmStr[MAX_ROTARY_ENCODER_DIGITS];
-volatile unsigned char irSpe = 0;
+volatile unsigned char irspe = 0;
 unsigned char irspeStr[MAX_ROTARY_ENCODER_DIGITS];
-volatile unsigned char irFs = 0;
+volatile unsigned char irsr = 0;
 unsigned char irsrStr[MAX_ROTARY_ENCODER_DIGITS];
-volatile unsigned char rfSpe = 0;
+volatile unsigned char rfspe = 0;
 unsigned char rfspeStr[MAX_ROTARY_ENCODER_DIGITS];
 
 // TODO: wall message
@@ -117,7 +117,6 @@ void highPriorityIsr(void){
     return;
 }
 
-// TODO: configure I/O pins
 void configIOCommander(void){
 	// PORTA - pretty sure you don't need to set TRIS for analogue inputs
 //	TRISAbits.TRISA0 = 1; // fwd-back joystick as input
@@ -179,7 +178,6 @@ unsigned char readRotaryEncoder(void){
 	return ADRESH; // read converted value
 }
 
-// TODO: set flags so LEDs work in main, user mode
 void commanderLEDs(void){
 	if(found){ // if the parrot is found
 		FOUND_LED = 1; // turn on found LED
@@ -196,7 +194,6 @@ void commanderLEDs(void){
 	}
 }
 
-// TODO: confirm this is still useful
 void askToSetToNewVal(void){
     putsLCD("Set to: ",LINE2); // display value to be set by rotary encoder on bottom line
 	putsLCD(rotaryEncoderStr,1);
@@ -231,7 +228,7 @@ void lowPriorityIsr(void){
 							//TODO: send serial 'o' and 1 
 							break;
 						case CHANGE_MAX_SPEED : // if user sets new max speed
-							// TODO: set max speed to rotary encoder value
+							maxSpd = rotaryEncoder; //  set max speed to rotary encoder value
 							// TODO: send serial 's' and max speed
 							break;
 						case SWITCH_INTERFACE : // if user selects secondary interface
@@ -253,35 +250,35 @@ void lowPriorityIsr(void){
 							LCDmode = CHANGE_KP; // if user enters factory menu, go to change Kp screen
 							break;
 						case CHANGE_KP :
-							// TODO: set Kp to rotary encoder value
+							Kp = rotaryEncoder; // set Kp to rotary encoder value
 							// TODO: send serial 'p' and Kp
 							break;
 						case CHANGE_KI :
-							// TODO: set Ki to rotary encoder value
+							Ki = rotaryEncoder; // set Ki to rotary encoder value
 							// TODO: send serial 'i' and Ki
 							break;
 						case CHANGE_KD :
-							// TODO: set Kd to rotary encoder value
+							Kd = rotaryEncoder; // set Kd to rotary encoder value
 							// TODO: send serial 'd' and Kd
 							break;
 						case CHANGE_MAX_SPEED_FACTORY :
-							// TODO: set max speed to rotary encoder value
+                            maxSpd = rotaryEncoder; // set max speed to rotary encoder value
 							// TODO: send serial 's' and max speed
 							break;
 						case CHANGE_YRM :
-							// TODO: set max yaw rate to rotary encoder value
+							yrm = rotaryEncoder; // set max yaw rate to rotary encoder value
 							// TODO: send serial 'y' and yrm
 							break;
 						case CHANGE_IR_SPE :
-							// TODO: set IR samples per estimate to rotary encoder value
+							irspe = rotaryEncoder; // set IR samples per estimate to rotary encoder value
 							// TODO: send serial 'g' and irspe
 							break;
 						case CHANGE_IR_SR :
-							// TODO: set IR sample rate to rotary encoder value
+							irsr = rotaryEncoder; // set IR sample rate to rotary encoder value
 							// TODO: send serial 'r' and irsr
 							break;
 						case CHANGE_RF_SPE :
-							// TODO: set RF samples per estimate to rotary encoder value
+							rfspe = rotaryEncoder; // set RF samples per estimate to rotary encoder value
 							// TODO: send serial 'f' and rfspe
 							break;
 						default :
