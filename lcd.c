@@ -23,6 +23,7 @@
 #define CURSOR_L    0x10
 #define FUNCTION_SET    0b00101000
 #define DISP_ON 0b00001100
+#define MAX_LCD_CHARS   16
 
 void cmd2LCD(unsigned char cmd){
 	// write upper nibble   
@@ -67,13 +68,13 @@ void putcLCD(unsigned char c){
 	E_PIN = 0;
 	RS_PIN = 0;
 
-	Delay100TCYx(40); // short delay to wait for busy flag to clear
+	//Delay100TCYx(40); // short delay to wait for busy flag to clear
 
 }
 
 void clrLine(void){
     unsigned char i;
-    for(i = 0; i < 16; i++){
+    for(i = 0; i < MAX_LCD_CHARS; i++){
         putcLCD(' ');
     }
 }
@@ -104,6 +105,8 @@ void putsLCD(unsigned char *ptr,unsigned char pos){
     }
     
     while(*ptr){ // until the null character is reached
+        
+        Delay100TCYx(40);
         putcLCD(*ptr); // write the character to the LCD
         ptr++; // go to the next character
     }

@@ -90,29 +90,28 @@ unsigned char irsrStr[MAX_ROTARY_ENCODER_DIGITS];
 volatile unsigned char rfspe = 0;
 unsigned char rfspeStr[MAX_ROTARY_ENCODER_DIGITS];
 
-typdef struct Strings{
-	unsigned char manual[] = "MANUAL";
-	unsigned char enter_menu[] = "Enter menu?";
-	unsigned char enter_auto_mode[] = "Enter auto mode?";
-	unsigned char turn_motors_off[] = "Turn motors off?";
-	unsigned char turn_motors_on[] = "Turn motors on?";
-	unsigned char max[] = "Max:";
-	unsigned char new[] = "New:";
-	unsigned char switch_interface[] = "Switch interface?";
-	unsigned char automatic[] = "AUTO";
-	unsigned char find_parrot[] = "SEL: Find parrot";
-	unsigned char foundStr[] = "Found!";
-	unsigned char finding[] = "Finding...";
-	unsigned char factory[] = "FACTORY";
-	unsigned char Kp[] = "Kp:";
-	unsigned char Ki[] = "Ki:";
-	unsigned char Kd[] = "Kd:";
-	unsigned char max_speed[] = "Max Speed:";
-	unsigned char max_yaw_rate[] = "Max yaw rate:";
-	unsigned char irspe[] = "IR SPE:";
-	unsigned char irsr[] = "IR SR:";
-	unsigned char rfspe[] = "RF SPE:";
-}
+// should use struct for these instead of calling each one _str but couldn't figure out how
+unsigned char manual_str[] = "MANUAL";
+unsigned char enter_menu_str[] = "Enter menu?";
+unsigned char enter_auto_mode_str[] = "Enter auto mode?";
+unsigned char turn_motors_off_str[] = "Turn motors off?";
+unsigned char turn_motors_on_str[] = "Turn motors on?";
+unsigned char max_str[] = "Max:";
+unsigned char new_str[] = "New:";
+unsigned char switch_interface_str[] = "Switch interface?";
+unsigned char automatic_str[] = "AUTO";
+unsigned char find_parrot_str[] = "SEL: Find parrot";
+unsigned char found_str[] = "Found!";
+unsigned char finding_str[] = "Finding...";
+unsigned char factory_str[] = "FACTORY";
+unsigned char Kp_str[] = "Kp:";
+unsigned char Ki_str[] = "Ki:";
+unsigned char Kd_str[] = "Kd:";
+unsigned char max_speed_str[] = "Max Speed:";
+unsigned char max_yaw_rate_str[] = "Max yaw rate:";
+unsigned char irspe_str[] = "IR SPE:";
+unsigned char irsr_str[] = "IR SR:";
+unsigned char rfspe_str[] = "RF SPE:";
 
 // TODO: wall message
 
@@ -219,7 +218,8 @@ void commanderLEDs(void){
 }
 
 void askToSetToNewVal(void){
-    putsLCD("Set to: ",LINE2); // display value to be set by rotary encoder on bottom line
+    unsigned char msg[] = "Set to: ";
+    putsLCD(msg,LINE2); // display value to be set by rotary encoder on bottom line
 	putsLCD(rotaryEncoderStr,1);
 }
 
@@ -381,29 +381,30 @@ void main(void){
 			
 			// LCD displays
 			if(mode == USER_MANUAL){ // manual mode
+                num2str(rssiStr,rssi);
 				putsLCD(rssiStr,LINE1); // display rssi to top left of LCD
-				putsLCD("MANUAL",1); // tell user they are in manual mode in top right
+				putsLCD(manual_str,1); // tell user they are in manual mode in top right
 				switch(LCDmode){
 					case MANUAL_ENTRY :	// outside menu
-						putsLCD("Enter menu?",LINE2); // ask user if they want to enter menu on lower line
+						putsLCD(enter_menu_str,LINE2); // ask user if they want to enter menu on lower line
 						break;
 					case ENTER_AUTO	: // asking to enter auto mode
-						putsLCD("Enter auto mode?",LINE2); // ask user if they want to enter auto mode on lower line
+						putsLCD(enter_auto_mode_str,LINE2); // ask user if they want to enter auto mode on lower line
 						break;
 					case MOTORS_ON : // if motors are on
-						putsLCD("Turn motors off?",LINE2); // ask user if they want to turn them off on lower line
+						putsLCD(turn_motors_off_str,LINE2); // ask user if they want to turn them off on lower line
 						break;
 					case MOTORS_OFF : // if motors are off
-						putsLCD("Turn motors on?",LINE2); // ask user if they want to turn them on on lower line
+						putsLCD(turn_motors_on_str,LINE2); // ask user if they want to turn them on on lower line
 						break;
 					case CHANGE_MAX_SPEED : // if user sets new max speed
-						putsLCD("Max:",LINE2); // diplay current max speed on lower line
+						putsLCD(max_str,LINE2); // diplay current max speed on lower line
 						putsLCD(maxSpdStr,0);
-						putsLCD("New:",1); // adjacent, display value to given by rotary encoder
+						putsLCD(new_str,1); // adjacent, display value to given by rotary encoder
 						putsLCD(rotaryEncoderStr,0);
 						break;
 					case SWITCH_INTERFACE : // ask user if they want to switch UI
-						putsLCD("Switch interface?",LINE2);
+						putsLCD(switch_interface_str,LINE2);
 						break;
 					default :
 						break;
@@ -411,17 +412,17 @@ void main(void){
 			}
 		
 			else if(mode == USER_AUTO){ // if in auto mode
-				putsLCD("AUTO",LINE1); // tell the user they are in auto mode
+				putsLCD(automatic_str,LINE1); // tell the user they are in auto mode
 				if(LCDmode == AUTO_ENTRY){ // if finding parrot hasn't begun
-					putsLCD("SEL: Find parrot",LINE2); // tell user that pressing select commences search
+					putsLCD(find_parrot_str,LINE2); // tell user that pressing select commences search
 				}
 				else if(LCDmode == AUTO_FINDING){ // if finding parrot has begun
 					putsLCD(rssiStr,LINE2); // display rssi to bottom left of LCD
 					if(found){	// if parrot found, tell user
-						putsLCD("Found!",1); // tell user
+						putsLCD(found_str,1); // tell user
 					}
 					else{ // if parrot not found
-						putsLCD("Finding...",1); // tell user it is being found
+						putsLCD(finding_str,1); // tell user it is being found
 					}
 				}
 			}
@@ -429,46 +430,46 @@ void main(void){
 			else if(mode == FACTORY){ // if in factory mode
 				switch(LCDmode){
 					case FACTORY_ENTRY : // if outside factory mode menu
-						putsLCD("FACTORY",LINE1); // tell user they are in factory mode
-						putsLCD("Enter menu?",LINE2); // ask user if they want to enter menu on lower line
+						putsLCD(factory_str,LINE1); // tell user they are in factory mode
+						putsLCD(enter_menu_str,LINE2); // ask user if they want to enter menu on lower line
 						break;
 					case CHANGE_KP :
-						putsLCD("Kp:",LINE1); // display current Kp on top line
+						putsLCD(Kp_str,LINE1); // display current Kp on top line
 						putsLCD(KpStr,1);
 						askToSetToNewVal(); // display Kp to be set by rotary encoder on bottom line
 						break;
 					case CHANGE_KI :
-						putsLCD("Ki:",LINE1); // display current Ki on top line
+						putsLCD(Ki_str,LINE1); // display current Ki on top line
 						putsLCD(KiStr,1);
 						askToSetToNewVal(); // display Ki to be set by rotary encoder on bottom line
 						break;
 					case CHANGE_KD :
-						putsLCD("Kd:",LINE1); // display current Kd on top line
+						putsLCD(Kd_str,LINE1); // display current Kd on top line
 						putsLCD(KdStr,1);
 						askToSetToNewVal(); // display Kd to be set by rotary encoder on bottom line
 						break;
 					case CHANGE_MAX_SPEED_FACTORY :
-						putsLCD("Max Speed:",LINE1); // display current max speed on top line
+						putsLCD(max_speed_str,LINE1); // display current max speed on top line
 						putsLCD(maxSpdStr,1);
 						askToSetToNewVal(); // display max speed to be set by rotary encoder on bottom line
 						break;
 					case CHANGE_YRM :
-						putsLCD("Max yaw rate:",LINE1); // display current max yaw rate on top line
+						putsLCD(max_yaw_rate_str,LINE1); // display current max yaw rate on top line
 						putsLCD(yrmStr,1);
 						askToSetToNewVal(); // display max yaw rate to be set by rotary encoder on bottom line
 						break;
 					case CHANGE_IR_SPE :
-						putsLCD("IR SPE:",LINE1); // display current IR samples per estimate on top line
+						putsLCD(irspe_str,LINE1); // display current IR samples per estimate on top line
 						putsLCD(irspeStr,1);
 						askToSetToNewVal(); // display IR samples per estimate to be set by rotary encoder on bottom line
 						break;
 					case CHANGE_IR_SR :
-						putsLCD("IR SR:",LINE1); // display current IR sample rate on top line
+						putsLCD(irsr_str,LINE1); // display current IR sample rate on top line
 						putsLCD(irsrStr,1);
 						askToSetToNewVal(); // display IR sample rate to be set by rotary encoder on bottom line
 						break;
 					case CHANGE_RF_SPE :
-						putsLCD("RF SPE:",LINE1); // display current RF samples per estimate on top line
+						putsLCD(rfspe_str,LINE1); // display current RF samples per estimate on top line
 						putsLCD(rfspeStr,1);
 						askToSetToNewVal(); // display RF samples per estimate to be set by rotary encoder on bottom line
 						break;

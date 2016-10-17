@@ -7,6 +7,7 @@
 
 #ifndef LCD_H
 #define	LCD_H
+#define MAX_LCD_CHARS 16
 #define LINE1  0x0F
 #define LINE2  0xFF
 #define CLR_DISP    0b00000001
