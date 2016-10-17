@@ -21,6 +21,14 @@
 #include <adc.h>
 
 
+#define TMR3_CON 0b11000001;
+
+
+extern volatile unsigned char START_IR;     //Flag to START IR sensor
+extern volatile unsigned char IRcurrent;    //Current IR sensor we are checking
+extern volatile unsigned char IRrateCURRENT;  
+
+
 /*Define the interrupts*/
 void low_interrupt( void );
 void high_interrupt( void );
@@ -29,6 +37,13 @@ void highPriorityIsr( void );
 
 //OTHER SETUP
 void setup(void);
+void ISRinitialise(void);
+void ISRturnON(void);
+void ISRturnOFF(void);
+void TMR3initialise (void);
+
+
+
 
 
 

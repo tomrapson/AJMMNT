@@ -11,6 +11,29 @@
 #include "SerialStuff.h"
 
 
+//The GLOBAL variables needed by different modules
+volatile unsigned char AutoSTATE=0;     //boolean values
+volatile unsigned char ParrotSTATE=0;
+volatile unsigned char MotorSTATE=0;
+volatile unsigned char SpeedMAX=0;     //0-255 values
+volatile unsigned char RIGHTspeed=0;
+volatile unsigned char LEFTspeed=0;     
+volatile unsigned char YawMAX=0; 
+volatile unsigned char GainD=0;
+volatile unsigned char GainI=0;
+volatile unsigned char GainP=0;
+volatile unsigned char RFsample=0;
+volatile unsigned char IRsample=0;
+volatile unsigned char IRrate=0;
+volatile unsigned char SENDdataID=0; 
+volatile unsigned char  RSSI;             //RSSI value
+
+volatile struct DataStruct INCOMINGdata;        
+volatile struct DataStruct OUTGOINGdata;
+
+
+
+
 //Takes the current value that has come through the serial and assigns it to the
 //correct variable
 //Unused ASCII chars have been commented out
@@ -23,11 +46,11 @@ void RECEIVEserialPARSE( void )
                     AutoSTATE = INCOMINGdata.DataValue;
                 }
                 break;
-            case 'b':           //Current Speed (set by user) Joystick
-                SpeedCURR = INCOMINGdata.DataValue;
+            case 'b':           //SPEED OF LEFT WHEEL
+                RIGHTspeed = INCOMINGdata.DataValue;
                 break;
-            case 'c':           //TURNING joystick
-                YawCURR = INCOMINGdata.DataValue;
+            case 'c':           //SPEED OF RIGHT WHEEL
+                LEFTspeed = INCOMINGdata.DataValue;
                 break;
             case 'd':           //PID Gain Diff
                 GainD = INCOMINGdata.DataValue;
@@ -118,11 +141,11 @@ void SENDserialPACKAGE( void  )
                  break;
             case 'b':           
             OUTGOINGdata.DataID = SENDdataID;
-            OUTGOINGdata.DataValue = (unsigned char) SpeedCURR;
+            OUTGOINGdata.DataValue = (unsigned char) RIGHTspeed;
                  break;
             case 'c':           
             OUTGOINGdata.DataID = SENDdataID;
-            OUTGOINGdata.DataValue = (unsigned char) YawCURR;
+            OUTGOINGdata.DataValue = (unsigned char) LEFTspeed;
                  break;
             case 'd':           
             OUTGOINGdata.DataID = SENDdataID;
