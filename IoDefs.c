@@ -8,6 +8,7 @@
 void ConfigIO(void)
 {
     /*PORTA*/
+    TRISAbits.RA4 = 1; //Input to COUNTER module (LEFT WHEEL)
     
     /*PORTB*/
     TRISBbits.TRISB0 = 0;    //OUTPUT TO DEBUG
@@ -17,7 +18,8 @@ void ConfigIO(void)
     /*PORTC bit 1 and 2 is an output*/
     TRISCbits.TRISC2 = 0;   //CCP1
     TRISCbits.TRISC1 = 0;   //CCP2
-    TRISCbits.TRISC0 = 1;   //External trigger input for timer 1
+    TRISCbits.TRISC0 = 1;   //Input to COUNTER module (RIGHT WHEEL)
+
     
     TRISCbits.TRISC6 = 0;   /*Set required TRISC for serial*/
     TRISCbits.TRISC7 = 1;

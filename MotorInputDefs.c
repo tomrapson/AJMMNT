@@ -7,6 +7,7 @@
 /*Required include files*/
 #include <p18f4520.h>
 #include "MotorInputDefs.h"
+#include "PIDFunctions.h"
 
 
 
@@ -19,29 +20,28 @@ void SetDirection(unsigned char direction)
 /*Configure the timer and period for the PWM, does not cover duty cycle*/
 void ConfigPWM(void)
 {
-    T2CON =  0x05;  //enable timer
+    T2CON =  TMR2_CON;  //enable timer
+    CCP1CON = PWM_SETTINGS; //Set both CCP modules to PWM
+    CCP2CON = PWM_SETTINGS;
     PR2 = 0xff;     //max out the period
-    CCP1CON = 0x0c; //Set both CCP modules to PWM
-    CCP2CON = 0x0c;
 }
 
 /*Set the speed, given a metric based on the controller*/
 /*INPUT 1 is the 8bit value corresponding to a speed*/
 /*INPUT 2 is  a simple 0 or 1 bit deciding which motor is being changed*/
-void SetSpeed(unsigned char speed, unsigned char motor)
+void SetSpeed(unsigned char SetSpeed, unsigned char motor)
 {
     //Check if correct selection
-    if( (motor == LEFTMOTOR)||(motor == RIGHTMOTOR) )
+    if( (motor == LEFTWHEEL)||(motor == RIGHTWHEEL) )
     {
         //Check which motor to set
-        if ( motor == RIGHTMOTOR )
+        if ( motor == RIGHTWHEEL )
         {
-            CCPR1L = speed; //Duty cycle of PWM
+            CCPR2L = SetSpeed; //Right wheel speed
         }
-        else if ( motor == LEFTMOTOR )
+        else if ( motor == LEFTWHEEL )
         {
-            CCPR2L = speed; //Duty cycle of PWM
-            CCPR1L = speed; //Duty cycle of PWM
+            CCPR1L = SetSpeed; //Left Wheel Speed
         }
     }
     else
@@ -51,25 +51,27 @@ void SetSpeed(unsigned char speed, unsigned char motor)
 }
 
 //Input the raw data and motor selection. Will need to determine this via some code form
-void ConvertInput(unsigned char rawinput, unsigned char motorsel, unsigned char* realinput, unsigned char* wheelsel)
+void SCALEspeed(unsigned char SPEEDin, unsigned char motorsel, struct PIDdata *WHEELdata)
 {
+    
     int tempdir;
     
     /*First step is to tell if the input is in our desired range*/
-    if(rawinput >= 128)
+    if(SPEEDin >= 128)
     {
         /*Subtract the value by 128 and just double it*/
-        rawinput = rawinput - 128;
-        rawinput = rawinput*2;
-        *realinput = rawinput;
+        SPEEDin = SPEEDin - 128;
+        SPEEDin = SPEEDin*2;
+        WHEELdata->SPEEDset = SPEEDin;
+        WHEELdata->Direction = ISFORWARD;
         tempdir = ISFORWARD; 
     }
-    else if (rawinput < 127)
+    else if (SPEEDin < 127)
     {
         /*Take the raw input and minus 127 before doubling it*/
-        rawinput = (127 - rawinput);
-        rawinput = rawinput*2;
-        *realinput = rawinput;
+        SPEEDin = (127 - SPEEDin);
+        SPEEDin = SPEEDin*2;
+        WHEELdata->SPEEDset = SPEEDin;
         tempdir = ISBACKWARD;
     }
     
@@ -80,11 +82,11 @@ void ConvertInput(unsigned char rawinput, unsigned char motorsel, unsigned char*
         /*Then understand wheel rotation*/
         if(tempdir == ISFORWARD)
         {
-            *wheelsel = FORL;
+            WHEELdata->Direction =  FORL;
         }
         else if (tempdir == ISBACKWARD)
         {
-            *wheelsel = BACKL;
+            WHEELdata->Direction = BACKL;
         }
     }
     /*RIGHT WHEEL*/
@@ -92,11 +94,11 @@ void ConvertInput(unsigned char rawinput, unsigned char motorsel, unsigned char*
     {
         if(tempdir == ISFORWARD)
         {
-            *wheelsel = FORR;
+            WHEELdata->Direction = FORR;
         }
         else if (tempdir == ISBACKWARD)
         {
-            *wheelsel = BACKR;
+            WHEELdata->Direction =  BACKR;
         }
     }
 }
