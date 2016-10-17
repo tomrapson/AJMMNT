@@ -90,6 +90,30 @@ unsigned char irsrStr[MAX_ROTARY_ENCODER_DIGITS];
 volatile unsigned char rfspe = 0;
 unsigned char rfspeStr[MAX_ROTARY_ENCODER_DIGITS];
 
+typdef struct Strings{
+	unsigned char manual[] = "MANUAL";
+	unsigned char enter_menu[] = "Enter menu?";
+	unsigned char enter_auto_mode[] = "Enter auto mode?";
+	unsigned char turn_motors_off[] = "Turn motors off?";
+	unsigned char turn_motors_on[] = "Turn motors on?";
+	unsigned char max[] = "Max:";
+	unsigned char new[] = "New:";
+	unsigned char switch_interface[] = "Switch interface?";
+	unsigned char automatic[] = "AUTO";
+	unsigned char find_parrot[] = "SEL: Find parrot";
+	unsigned char foundStr[] = "Found!";
+	unsigned char finding[] = "Finding...";
+	unsigned char factory[] = "FACTORY";
+	unsigned char Kp[] = "Kp:";
+	unsigned char Ki[] = "Ki:";
+	unsigned char Kd[] = "Kd:";
+	unsigned char max_speed[] = "Max Speed:";
+	unsigned char max_yaw_rate[] = "Max yaw rate:";
+	unsigned char irspe[] = "IR SPE:";
+	unsigned char irsr[] = "IR SR:";
+	unsigned char rfspe[] = "RF SPE:";
+}
+
 // TODO: wall message
 
 #pragma code highPriorityInterruptAddress=0x0008
